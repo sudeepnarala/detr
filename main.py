@@ -19,6 +19,7 @@ from models import build_model
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
+    parser.add_argument("--gather_features", action="store_true", default=False)
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)
     parser.add_argument('--batch_size', default=2, type=int)
@@ -240,9 +241,37 @@ def main(args):
     print('Training time {}'.format(total_time_str))
 
 
+def gather_features(args):
+    from .models.backbone import build_backbone
+    import pickle
+    from tqdm import tqdm
+    # Get the data
+    dataset_train = build_dataset(image_set='train', args=args)
+    sampler_train = torch.utils.data.RandomSampler(dataset_train)
+    batch_sampler_train = torch.utils.data.BatchSampler(
+        sampler_train, args.batch_size, drop_last=True)
+    data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
+                                   collate_fn=utils.collate_fn, num_workers=args.num_workers)
+    # Get the model
+    backbone = build_backbone(args)
+    # Go through and cache all the data, give each batch a key
+    with open("save_features.pkl", "a+") as f:
+        batch_num = 0
+        for data, targets in tqdm(data_loader_train):
+            output = backbone(data)
+            pickle.dump({"batch1": [output, targets]}, f)
+            batch_num += 1
+
+
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
     args = parser.parse_args()
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    main(args)
+    if not args.gather_features:
+        main(args)
+    else:
+        gather_features(args)
