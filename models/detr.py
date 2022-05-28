@@ -64,7 +64,11 @@ class DETR(nn.Module):
         # # them as features. I.e. we don't run end to end through resnet
         # src, mask = features[-1].decompose()
 
-        tensor, mask, pos = samples
+        src, mask, pos = samples
+        # Unbatch the data
+        src = src[0]
+        mask = mask[0]
+        # pos = pos[0]
         assert mask is not None
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
 

@@ -32,6 +32,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
             tensor = tensor.to(device)
             mask = mask.to(device)
             pos_enc = pos_enc.to(device)
+            # Unbatch target
+            targets = [{k : v[0].to(device) for k,v in t.items()} for t in targets]  # Already done
             # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]  # Already done
             outputs = model([tensor, mask, pos_enc])
             loss_dict = criterion(outputs, targets)
