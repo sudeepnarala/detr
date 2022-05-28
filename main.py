@@ -255,12 +255,13 @@ def gather_features(args):
     # Get the model
     backbone = build_backbone(args)
     # Go through and cache all the data, give each batch a key
-    with open("save_features.pkl", "a+") as f:
-        batch_num = 0
-        for data, targets in tqdm(data_loader_train):
-            output = backbone(data)
-            pickle.dump({"batch1": [output, targets]}, f)
-            batch_num += 1
+    with torch.no_grad():
+        with open("save_features.pkl", "a+") as f:
+            batch_num = 0
+            for data, targets in tqdm(data_loader_train):
+                output = backbone(data)
+                pickle.dump({"batch1": [output, targets]}, f)
+                batch_num += 1
 
 
 
