@@ -267,7 +267,7 @@ def gather_features(args):
     # Go through and cache all the data, give each batch a key
     with torch.no_grad():
         batch_num = 0
-        for data in tqdm(data_loader_train):
+        for data, targets in tqdm(data_loader_train):
             data = data.to(device)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
             output = backbone(data)
