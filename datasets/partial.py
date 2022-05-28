@@ -2,7 +2,7 @@ import torch
 import os
 import pickle
 
-class PartialDataLoader(torch.utils.data.DataLoader):
+class PartialDataSet(torch.utils.data.Dataset):
     def __init__(self, backbone_features_dir):
         self.backbone_features_dir = backbone_features_dir
     def __len__(self):

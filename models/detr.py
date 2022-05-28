@@ -20,7 +20,7 @@ from .transformer import build_transformer
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, transformer, num_classes, num_queries, aux_loss=False):
+    def __init__(self, transformer, num_classes, num_queries, num_backbone_channels, aux_loss=False):
         """ Initializes the model.
         Parameters:
             transformer: torch module of the transformer architecture. See transformer.py
@@ -36,7 +36,7 @@ class DETR(nn.Module):
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
-        self.input_proj = nn.Conv2d(backbone.num_channels, hidden_dim, kernel_size=1)
+        self.input_proj = nn.Conv2d(num_backbone_channels, hidden_dim, kernel_size=1)
         self.aux_loss = aux_loss
 
     def forward(self, samples: NestedTensor):
@@ -325,6 +325,8 @@ def build(args):
         transformer,
         num_classes=num_classes,
         num_queries=args.num_queries,
+        # TODO: Change, hardcoded
+        num_backbone_channels=512,
         aux_loss=args.aux_loss,
     )
     if args.masks:

@@ -193,7 +193,7 @@ def main(args):
 
     print("Start training")
     # TODO: Change, hardcoded for now
-    data_loader_train = PartialDataLoader("backbone_features")
+    data_loader_train = DataLoader(PartialDataSet("backbone_features"), batch_size=1)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -258,7 +258,7 @@ def gather_features(args):
         sampler_train, args.batch_size, drop_last=True)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn, num_workers=args.num_workers)
-
+    backbone = build_backbone(args)
     # Go through and cache all the data, give each batch a key
     with torch.no_grad():
         batch_num = 0

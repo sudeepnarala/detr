@@ -26,7 +26,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
 
-    with tqdm(len(dataloader)) as progress_bar:
+    with tqdm(len(data_loader)) as progress_bar:
         for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
             samples = samples.to(device)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
