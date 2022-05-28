@@ -22,6 +22,9 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument("--gather_features", action="store_true", default=False)
     parser.add_argument("--ratio_get", default=0.25, type=float)
+    parser.add_argument("--backbone_features_dir", type=str)
+    parser.add_argument("--image_set", type=str)
+
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)
     parser.add_argument('--batch_size', default=2, type=int)
@@ -193,7 +196,7 @@ def main(args):
 
     print("Start training")
     # TODO: Change, hardcoded for now
-    data_loader_train = DataLoader(PartialDataSet("backbone_features"), batch_size=1)
+    data_loader_train = DataLoader(PartialDataSet(args.backbone_features_dir), batch_size=1)
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -252,23 +255,25 @@ def gather_features(args):
     import pickle
     from tqdm import tqdm
     # Get the data
-    dataset_train = build_dataset(image_set='train', args=args)
+    dataset_train = build_dataset(image_set=args.image_set, args=args)
     sampler_train = torch.utils.data.RandomSampler(dataset_train)
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn, num_workers=args.num_workers)
+    device = torch.device(args.device)
     backbone = build_backbone(args)
+    backbone.to(device)
     # Go through and cache all the data, give each batch a key
     with torch.no_grad():
         batch_num = 0
-        for data, targets in tqdm(data_loader_train):
+        for data in tqdm(data_loader_train):
             data = data.to(device)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
             output = backbone(data)
-            with open("backbone_features/batch{}_samples".format(batch_num), "wb") as f:
+            with open(args.backbone_features_dir+"/batch{}_samples".format(batch_num), "wb") as f:
                 pickle.dump(output, f)
-            with open("backbone_features/batch{}_targets".format(batch_num), "wb") as f:
+            with open(args.backbone_features_dir+"/batch{}_targets".format(batch_num), "wb") as f:
                 pickle.dump(targets, f)
             batch_num += 1
 

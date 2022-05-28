@@ -26,45 +26,46 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
 
-    with tqdm(len(data_loader)) as progress_bar:
+    # with tqdm(len(data_loader)) as progress_bar:
         # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
-        for tensor, mask, pos_enc, targets in metric_logger.log_every(data_loader, print_freq, header):
-            tensor = tensor.to(device)
-            mask = mask.to(device)
-            pos_enc = pos_enc.to(device)
-            # Unbatch target
-            targets = [{k : v[0].to(device) for k,v in t.items()} for t in targets]  # Already done
-            # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]  # Already done
-            outputs = model([tensor, mask, pos_enc])
-            loss_dict = criterion(outputs, targets)
-            weight_dict = criterion.weight_dict
-            losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
+        # for tensor, mask, pos_enc, targets in metric_logger.log_every(data_loader, print_freq, header):
+    for tensor, mask, pos_enc, targets in tqdm(data_loader):
+        tensor = tensor.to(device)
+        mask = mask.to(device)
+        pos_enc = pos_enc.to(device)
+        # Unbatch target
+        targets = [{k : v[0].to(device) for k,v in t.items()} for t in targets]  # Already done
+        # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]  # Already done
+        outputs = model([tensor, mask, pos_enc])
+        loss_dict = criterion(outputs, targets)
+        weight_dict = criterion.weight_dict
+        losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)
 
-            # reduce losses over all GPUs for logging purposes
-            loss_dict_reduced = utils.reduce_dict(loss_dict)
-            loss_dict_reduced_unscaled = {f'{k}_unscaled': v
-                                          for k, v in loss_dict_reduced.items()}
-            loss_dict_reduced_scaled = {k: v * weight_dict[k]
-                                        for k, v in loss_dict_reduced.items() if k in weight_dict}
-            losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
+        # reduce losses over all GPUs for logging purposes
+        loss_dict_reduced = utils.reduce_dict(loss_dict)
+        loss_dict_reduced_unscaled = {f'{k}_unscaled': v
+                                      for k, v in loss_dict_reduced.items()}
+        loss_dict_reduced_scaled = {k: v * weight_dict[k]
+                                    for k, v in loss_dict_reduced.items() if k in weight_dict}
+        losses_reduced_scaled = sum(loss_dict_reduced_scaled.values())
 
-            loss_value = losses_reduced_scaled.item()
+        loss_value = losses_reduced_scaled.item()
 
-            if not math.isfinite(loss_value):
-                print("Loss is {}, stopping training".format(loss_value))
-                print(loss_dict_reduced)
-                sys.exit(1)
+        if not math.isfinite(loss_value):
+            print("Loss is {}, stopping training".format(loss_value))
+            print(loss_dict_reduced)
+            sys.exit(1)
 
-            optimizer.zero_grad()
-            losses.backward()
-            if max_norm > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-            optimizer.step()
+        optimizer.zero_grad()
+        losses.backward()
+        if max_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+        optimizer.step()
 
-            metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled, **loss_dict_reduced_unscaled)
-            metric_logger.update(class_error=loss_dict_reduced['class_error'])
-            metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-            progress_bar.update(1)
+        metric_logger.update(loss=loss_value, **loss_dict_reduced_scaled, **loss_dict_reduced_unscaled)
+        metric_logger.update(class_error=loss_dict_reduced['class_error'])
+        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        # progress_bar.update(1)
         # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
@@ -92,11 +93,13 @@ def evaluate(model, criterion, postprocessors, data_loader, base_ds, device, out
             output_dir=os.path.join(output_dir, "panoptic_eval"),
         )
 
-    for samples, targets in metric_logger.log_every(data_loader, 10, header):
-        samples = samples.to(device)
-        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-
-        outputs = model(samples)
+    for tensor, mask, pos_enc, targets in metric_logger.log_every(data_loader, 10, header):
+        tensor = tensor.to(device)
+        mask = mask.to(device)
+        pos_enc = pos_enc.to(device)
+        # Unbatch target
+        targets = [{k : v[0].to(device) for k,v in t.items()} for t in targets]  # Already done
+        outputs = model([tensor, mask, pos_enc])
         loss_dict = criterion(outputs, targets)
         weight_dict = criterion.weight_dict
 

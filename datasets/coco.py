@@ -156,8 +156,7 @@ def build(image_set, args):
     img_folder, ann_file = PATHS[image_set]
     dataset = CocoDetection(img_folder, ann_file, transforms=make_coco_transforms(image_set), return_masks=args.masks)
     # Seed set earlier so we are good here
-    if image_set == "train":
-        print("Throwing away {}% of the data".format((1-args.ratio_get)*100))
-        dataset = torch.utils.data.Subset(dataset, torch.randperm(len(dataset))[:int(args.ratio_get*len(dataset))])
+    print("Throwing away {}% of the data".format((1-args.ratio_get)*100))
+    dataset = torch.utils.data.Subset(dataset, torch.randperm(len(dataset))[:int(args.ratio_get*len(dataset))])
 
     return dataset
