@@ -58,11 +58,13 @@ class DETR(nn.Module):
         #     samples = nested_tensor_from_tensor_list(samples)
         # features, pos = self.backbone(samples)
 
-        # We extract features from backbone. Just use these.
-        features, pos = samples
-        # SN: How do we do masking? We basically do the stuff we are doing here but just once per training run and use
-        # them as features. I.e. we don't run end to end through resnet
-        src, mask = features[-1].decompose()
+        # # We extract features from backbone. Just use these.
+        # features, pos = samples
+        # # SN: How do we do masking? We basically do the stuff we are doing here but just once per training run and use
+        # # them as features. I.e. we don't run end to end through resnet
+        # src, mask = features[-1].decompose()
+
+        tensor, mask, pos = samples
         assert mask is not None
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
 

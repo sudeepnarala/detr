@@ -27,11 +27,13 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     print_freq = 10
 
     with tqdm(len(data_loader)) as progress_bar:
-        for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
-            samples = samples.to(device)
-            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-
-            outputs = model(samples)
+        # for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
+        for tensor, mask, pos_enc, targets in metric_logger.log_every(data_loader, print_freq, header):
+            tensor = tensor.to(device)
+            mask = mask.to(device)
+            pos_enc = pos_enc.to(device)
+            # targets = [{k: v.to(device) for k, v in t.items()} for t in targets]  # Already done
+            outputs = model([tensor, mask, pos_enc])
             loss_dict = criterion(outputs, targets)
             weight_dict = criterion.weight_dict
             losses = sum(loss_dict[k] * weight_dict[k] for k in loss_dict.keys() if k in weight_dict)

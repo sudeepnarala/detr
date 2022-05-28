@@ -15,7 +15,7 @@ import util.misc as utils
 from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
 from models import build_model
-from datasets.partial import PartialDataLoader
+from datasets.partial import PartialDataSet
 
 
 def get_args_parser():
