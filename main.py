@@ -15,6 +15,7 @@ import util.misc as utils
 from datasets import build_dataset, get_coco_api_from_dataset
 from engine import evaluate, train_one_epoch
 from models import build_model
+from datasets.partial import PartialDataLoader
 
 
 def get_args_parser():
@@ -154,14 +155,14 @@ def main(args):
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
 
-    data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
-                                   collate_fn=utils.collate_fn, num_workers=args.num_workers)
+    # data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
+    #                                collate_fn=utils.collate_fn, num_workers=args.num_workers)
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
 
     if args.dataset_file == "coco_panoptic":
         # We also evaluate AP during panoptic training, on original coco DS
-        coco_val = datasets.coco.build("val", args, ratio_get=1)
+        coco_val = datasets.coco.build("val", args,)
         base_ds = get_coco_api_from_dataset(coco_val)
     else:
         base_ds = get_coco_api_from_dataset(dataset_val)
@@ -191,19 +192,8 @@ def main(args):
         return
 
     print("Start training")
-    print("Gathering Features from Backbone")
-
-    device = torch.device(args.device)
-    backbone = build_backbone(args)
-    backbone.to(device)
-    with torch.no_grad():
-        for data, targets in tqdm(data_loader_train):
-            data = data.to(device)
-            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-            output = backbone(data)
-
-
-    print("Done Gathering Features from Backbone")
+    # TODO: Change, hardcoded for now
+    data_loader_train = PartialDataLoader("backbone_features")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -262,27 +252,25 @@ def gather_features(args):
     import pickle
     from tqdm import tqdm
     # Get the data
-    dataset_train = build_dataset(image_set='train', args=args, ratio_get=0.25)
+    dataset_train = build_dataset(image_set='train', args=args)
     sampler_train = torch.utils.data.RandomSampler(dataset_train)
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn, num_workers=args.num_workers)
-    # Get the model
-    device = torch.device(args.device)
-    backbone = build_backbone(args)
-    backbone.to(device)
+
     # Go through and cache all the data, give each batch a key
     with torch.no_grad():
-        with open("save_features.pkl", "ab") as f:
-            batch_num = 0
-            for data, targets in tqdm(data_loader_train):
-                data = data.to(device)
-                targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-                output = backbone(data)
-                pickle.dump({"batch1": [output, targets]}, f)
-                batch_num += 1
-                break
+        batch_num = 0
+        for data, targets in tqdm(data_loader_train):
+            data = data.to(device)
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+            output = backbone(data)
+            with open("backbone_features/batch{}_samples".format(batch_num), "wb") as f:
+                pickle.dump(output, f)
+            with open("backbone_features/batch{}_targets".format(batch_num), "wb") as f:
+                pickle.dump(targets, f)
+            batch_num += 1
 
 
 if __name__ == '__main__':
