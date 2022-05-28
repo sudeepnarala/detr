@@ -20,10 +20,9 @@ from .transformer import build_transformer
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbone, transformer, num_classes, num_queries, aux_loss=False):
+    def __init__(self, transformer, num_classes, num_queries, aux_loss=False):
         """ Initializes the model.
         Parameters:
-            backbone: torch module of the backbone to be used. See backbone.py
             transformer: torch module of the transformer architecture. See transformer.py
             num_classes: number of object classes
             num_queries: number of object queries, ie detection slot. This is the maximal number of objects
@@ -38,7 +37,6 @@ class DETR(nn.Module):
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.input_proj = nn.Conv2d(backbone.num_channels, hidden_dim, kernel_size=1)
-        self.backbone = backbone
         self.aux_loss = aux_loss
 
     def forward(self, samples: NestedTensor):
@@ -56,9 +54,12 @@ class DETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        if isinstance(samples, (list, torch.Tensor)):
-            samples = nested_tensor_from_tensor_list(samples)
-        features, pos = self.backbone(samples)
+        # if isinstance(samples, (list, torch.Tensor)):
+        #     samples = nested_tensor_from_tensor_list(samples)
+        # features, pos = self.backbone(samples)
+
+        # We extract features from backbone. Just use these.
+        features, pos = samples
         # SN: How do we do masking? We basically do the stuff we are doing here but just once per training run and use
         # them as features. I.e. we don't run end to end through resnet
         src, mask = features[-1].decompose()
@@ -318,12 +319,9 @@ def build(args):
         num_classes = 250
     device = torch.device(args.device)
 
-    backbone = build_backbone(args)
-
     transformer = build_transformer(args)
 
     model = DETR(
-        backbone,
         transformer,
         num_classes=num_classes,
         num_queries=args.num_queries,

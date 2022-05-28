@@ -20,6 +20,7 @@ from models import build_model
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument("--gather_features", action="store_true", default=False)
+    parser.add_argument("--ratio_get", default=0.25, type=float)
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)
     parser.add_argument('--batch_size', default=2, type=int)
@@ -160,7 +161,7 @@ def main(args):
 
     if args.dataset_file == "coco_panoptic":
         # We also evaluate AP during panoptic training, on original coco DS
-        coco_val = datasets.coco.build("val", args)
+        coco_val = datasets.coco.build("val", args, ratio_get=1)
         base_ds = get_coco_api_from_dataset(coco_val)
     else:
         base_ds = get_coco_api_from_dataset(dataset_val)
@@ -190,6 +191,19 @@ def main(args):
         return
 
     print("Start training")
+    print("Gathering Features from Backbone")
+
+    device = torch.device(args.device)
+    backbone = build_backbone(args)
+    backbone.to(device)
+    with torch.no_grad():
+        for data, targets in tqdm(data_loader_train):
+            data = data.to(device)
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+            output = backbone(data)
+
+
+    print("Done Gathering Features from Backbone")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -242,29 +256,33 @@ def main(args):
 
 
 def gather_features(args):
-    from .models.backbone import build_backbone
+    # Gathering features takes about 40 minutes... It is fine, let's just do this every time and maintain in memory
+    # Best way to debug? Use one batch. Let's save that.
+    from models.backbone import build_backbone
     import pickle
     from tqdm import tqdm
     # Get the data
-    dataset_train = build_dataset(image_set='train', args=args)
+    dataset_train = build_dataset(image_set='train', args=args, ratio_get=0.25)
     sampler_train = torch.utils.data.RandomSampler(dataset_train)
     batch_sampler_train = torch.utils.data.BatchSampler(
         sampler_train, args.batch_size, drop_last=True)
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    collate_fn=utils.collate_fn, num_workers=args.num_workers)
     # Get the model
+    device = torch.device(args.device)
     backbone = build_backbone(args)
+    backbone.to(device)
     # Go through and cache all the data, give each batch a key
     with torch.no_grad():
-        with open("save_features.pkl", "a+") as f:
+        with open("save_features.pkl", "ab") as f:
             batch_num = 0
             for data, targets in tqdm(data_loader_train):
+                data = data.to(device)
+                targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
                 output = backbone(data)
                 pickle.dump({"batch1": [output, targets]}, f)
                 batch_num += 1
-
-
-
+                break
 
 
 if __name__ == '__main__':
@@ -275,4 +293,5 @@ if __name__ == '__main__':
     if not args.gather_features:
         main(args)
     else:
+        # This was just for testing, time taken etc.
         gather_features(args)
