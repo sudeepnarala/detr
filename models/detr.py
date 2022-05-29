@@ -16,11 +16,12 @@ from .matcher import build_matcher
 from .segmentation import (DETRsegm, PostProcessPanoptic, PostProcessSegm,
                            dice_loss, sigmoid_focal_loss)
 from .transformer import build_transformer
+from .gnn import build_gnn
 
 
 class DETR(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbone, transformer, num_classes, num_queries, aux_loss=False):
+    def __init__(self, backbone, transformer, gnn, num_classes, num_queries, aux_loss=False):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the backbone to be used. See backbone.py
@@ -33,6 +34,7 @@ class DETR(nn.Module):
         super().__init__()
         self.num_queries = num_queries
         self.transformer = transformer
+        self.gnn = gnn
         hidden_dim = transformer.d_model
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
         self.bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
@@ -62,10 +64,17 @@ class DETR(nn.Module):
 
         src, mask = features[-1].decompose()
         assert mask is not None
+        # (B, N, output_dim)
         hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[-1])[0]
-
+        # (B, N, 1001), 1001 classes here
         outputs_class = self.class_embed(hs)
+        # (B, N)
+        probs = torch.softmax(outputs_class, dim=-1)
+
         outputs_coord = self.bbox_embed(hs).sigmoid()
+        
+        self.gnn(probs, outputs_coord)
+
         out = {'pred_logits': outputs_class[-1], 'pred_boxes': outputs_coord[-1]}
         if self.aux_loss:
             out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
@@ -300,7 +309,6 @@ class MLP(nn.Module):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
 
-
 def build(args):
     # the `num_classes` naming here is somewhat misleading.
     # it indeed corresponds to `max_obj_id + 1`, where max_obj_id
@@ -321,9 +329,12 @@ def build(args):
 
     transformer = build_transformer(args)
 
+    gnn = build_gnn(args)
+
     model = DETR(
         backbone,
         transformer,
+        gnn,
         num_classes=num_classes,
         num_queries=args.num_queries,
         aux_loss=args.aux_loss,

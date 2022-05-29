@@ -99,6 +99,14 @@ def get_args_parser():
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
+
+
+    # arguments for GNN
+    parser.add_argument("--edge_mlp_hidden_dim", default=256, type=int)
+    parser.add_argument("--top_k", default=10, type=int)
+    parser.add_argument("--gnn_hidden_dim", default=128, type=int, help="Intermediate dimension (i.e. after 1 hop)")
+    parser.add_argument("--query_dim", default=256, type=int, help="Input dimension (i.e. embeddings dimensions for query embeddings and node embeddings in GNN)")
+
     return parser
 
 
