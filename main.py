@@ -106,6 +106,7 @@ def get_args_parser():
     parser.add_argument("--edge_mlp_hidden_dim", default=256, type=int)
     parser.add_argument("--top_k", default=10, type=int)
     parser.add_argument("--gnn_hidden_dim", default=128, type=int, help="Intermediate dimension (i.e. after 1 hop)")
+    parser.add_argument("--gnn_query_dim", default=256, type=int)
     parser.add_argument("--query_dim", default=256, type=int, help="Input dimension (i.e. embeddings dimensions for query embeddings and node embeddings in GNN)")
 
     return parser
@@ -128,7 +129,18 @@ def main(args):
     random.seed(seed)
 
     model, criterion, postprocessors = build_model(args)
-    model.load_state_dict(torch.load(pretrained_path))
+
+    # Load in the parameters
+    # loaded_params = torch.load(args.pretrained_path)["model"]
+    # for name, param in model.named_parameters():
+    #     try:
+    #         param = loaded_params[name]
+    #     except KeyError:
+    #         print("Not loading key {}".format(name))
+    # https://github.com/pytorch/pytorch/issues/1990, smart solution
+    new_params = model.state_dict()
+    new_params.update(torch.load(args.pretrained_path)["model"])
+    model.load_state_dict(new_params)
     model.to(device)
 
     model_without_ddp = model
