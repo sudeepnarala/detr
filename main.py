@@ -102,6 +102,7 @@ def get_args_parser():
 
 
     # arguments for GNN
+    parser.add_argument("--pretrained_path", required=True, type=str)
     parser.add_argument("--edge_mlp_hidden_dim", default=256, type=int)
     parser.add_argument("--top_k", default=10, type=int)
     parser.add_argument("--gnn_hidden_dim", default=128, type=int, help="Intermediate dimension (i.e. after 1 hop)")
@@ -127,6 +128,7 @@ def main(args):
     random.seed(seed)
 
     model, criterion, postprocessors = build_model(args)
+    model.load_state_dict(torch.load(pretrained_path))
     model.to(device)
 
     model_without_ddp = model
