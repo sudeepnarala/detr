@@ -68,9 +68,8 @@ class Transformer(nn.Module):
         outputs_coord = bbox_embed_lin(hs.transpose(1, 2)).sigmoid()
         # Now, we just did whatever positional embeddings are + this
         # Only use last layer output for GNN
-        tgt = self.gnn(probs[-1], outputs_coord[-1])
+        tgt = self.gnn(probs[-1])
         tgt = tgt.squeeze().transpose(0, 1)
-
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
 
