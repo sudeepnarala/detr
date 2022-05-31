@@ -29,11 +29,12 @@ class GCN(torch.nn.Module):
         val, idx = torch.max(probs, dim=-1)
         # Cutoff threshold?
         # Weight idx by val
-        # Zero out no class!
-        val[idx == 0] = 0
+        # Zero out no class! Only consider real predictions.
+        val[idx==91] = 0
         lin_comb = val.unsqueeze(-1)*self.class_embeds(idx)
         ret = self.modulation(lin_comb)
-        ret[val>0.8] = 0
+        # Take all the 91s and change them
+        ret[(val>0.5) & (idx != 91)] = 0
         return ret
 
 def build_gnn(args):

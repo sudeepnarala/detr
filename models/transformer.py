@@ -63,15 +63,19 @@ class Transformer(nn.Module):
                           pos=pos_embed, query_pos=query_embed)
         # (B, N, 92), 92 classes here
         outputs_class = class_embed_lin(hs.transpose(1, 2))
-        probs = torch.softmax(outputs_class, dim=-1)
+        probs_before = torch.softmax(outputs_class, dim=-1)
         # (B, N, 4)
-        outputs_coord = bbox_embed_lin(hs.transpose(1, 2)).sigmoid()
         # Now, we just did whatever positional embeddings are + this
         # Only use last layer output for GNN
-        tgt = self.gnn(probs[-1])
+        tgt = self.gnn(probs_before[-1])
         tgt = tgt.squeeze().transpose(0, 1)
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
+        # probs = torch.softmax(outputs_class, dim=-1)
+        # (B, N, 4)
+        # outputs_coord = bbox_embed_lin(hs.transpose(1, 2)).sigmoid()
+        # print((probs_before != probs).nonzero(as_tuple=True))
+        # import pdb; pdb.set_trace();
 
         return hs.transpose(1, 2), memory.permute(1, 2, 0).view(bs, c, h, w)
 
