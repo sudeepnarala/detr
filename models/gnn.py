@@ -32,7 +32,9 @@ class GCN(torch.nn.Module):
         # Zero out no class!
         val[idx == 0] = 0
         lin_comb = val.unsqueeze(-1)*self.class_embeds(idx)
-        return self.modulation(lin_comb)
+        ret = self.modulation(lin_comb)
+        ret[val>0.8] = 0
+        return ret
 
 def build_gnn(args):
     model = GCN(args.class_embed_dim, args.modulation_hidden_dim, args.hidden_dim)
