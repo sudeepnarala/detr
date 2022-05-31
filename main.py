@@ -109,7 +109,7 @@ def get_args_parser():
     # parser.add_argument("--gnn_query_dim", default=256, type=int)
     # parser.add_argument("--query_dim", default=256, type=int, help="Input dimension (i.e. embeddings dimensions for query embeddings and node embeddings in GNN)")
     parser.add_argument("--class_embed_dim", default=512, type=int)
-    parser.add_argument("--modulation_hidden_dim", default=256, type=int)
+    parser.add_argument("--modulation_hidden_dim", default=1024, type=int)
     return parser
 
 

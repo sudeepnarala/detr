@@ -21,7 +21,7 @@ class MLP(nn.Module):
 class GCN(torch.nn.Module):
     def __init__(self, class_embed_dim, modulation_hidden_dim, hidden_dim):
         super(GCN, self).__init__()
-        self.class_embeds = nn.Embedding(91, class_embed_dim)
+        self.class_embeds = nn.Embedding(92, class_embed_dim)
         self.modulation = MLP(class_embed_dim, modulation_hidden_dim, hidden_dim, 2)
         
     
@@ -29,6 +29,8 @@ class GCN(torch.nn.Module):
         val, idx = torch.max(probs, dim=-1)
         # Cutoff threshold?
         # Weight idx by val
+        # Zero out no class!
+        val[idx == 0] = 0
         lin_comb = val.unsqueeze(-1)*self.class_embeds(idx)
         return self.modulation(lin_comb)
 
