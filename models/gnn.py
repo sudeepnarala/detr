@@ -19,10 +19,10 @@ class MLP(nn.Module):
         return x
 
 class GCN(torch.nn.Module):
-    def __init__(self, class_embed_dim, modulation_hidden_dim, num_queries):
+    def __init__(self, class_embed_dim, modulation_hidden_dim, hidden_dim):
         super(GCN, self).__init__()
         self.class_embeds = nn.Embedding(91, class_embed_dim)
-        self.modulation = MLP(class_embed_dim, modulation_hidden_dim, num_queries, 2)
+        self.modulation = MLP(class_embed_dim, modulation_hidden_dim, hidden_dim, 2)
         
     
     def forward(self, probs):        
@@ -33,5 +33,5 @@ class GCN(torch.nn.Module):
         return self.modulation(lin_comb)
 
 def build_gnn(args):
-    model = GCN(args.class_embed_dim, args.modulation_hidden_dim, args.num_queries)
+    model = GCN(args.class_embed_dim, args.modulation_hidden_dim, args.hidden_dim)
     return model
