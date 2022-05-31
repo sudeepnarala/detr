@@ -29,7 +29,7 @@ class GCN(torch.nn.Module):
         val, idx = torch.max(probs, dim=-1)
         # Cutoff threshold?
         # Weight idx by val
-        lin_comb = val*self.class_embeds(idx)
+        lin_comb = val.unsqueeze(-1)*self.class_embeds(idx)
         return self.modulation(lin_comb)
 
 def build_gnn(args):
